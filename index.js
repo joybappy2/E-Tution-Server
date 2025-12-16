@@ -32,10 +32,24 @@ async function run() {
     const db = client.db("TutionBD_DB");
     const usersCollection = db.collection("users");
 
-    // users api
+    //-------Post User-------
     app.post("/users", async (req, res) => {
       try {
-        const newUser = req.body;
+        
+        const existingUserQuery = {email: req.body.email}
+        const existingUser = await usersCollection.findOne(existingUserQuery)
+        if(existingUser){
+          return res.status(200).send({message: "Existing user logged in"})
+        }
+        
+        const newUser = {
+          name: req.body?.name,
+          email: req.body?.email,
+          role: req.body?.role,
+          phone: req.body?.phone,
+        }
+        newUser.createdAt = new Date();
+
         const result = await usersCollection.insertOne(newUser);
         res.send(result);
       } catch (err) {
@@ -43,13 +57,14 @@ async function run() {
       }
     });
 
+    // -------Get All User-------
     app.get("/users", async (req, res) => {
       try {
         const cursor = await usersCollection.find();
         const result = await cursor.toArray();
         res.send(result);
       } catch (err) {
-        res.status(500).send({ error: "Users Not Found" });
+        res.status(500).send({ error: "Inernal Server Error" });
       }
     });
 
