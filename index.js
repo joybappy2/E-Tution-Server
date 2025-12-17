@@ -5,6 +5,13 @@ const port = process.env.PORT || 3000;
 const { MongoClient, ServerApiVersion } = require("mongodb");
 require("dotenv").config();
 
+//-------Firebase Admin Installation-------
+const admin = require("firebase-admin");
+const serviceAccount = require("e-tutionbd-firebase-adminsdk-.json");
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
 app.use(cors());
 app.use(express.json());
 app.use(
