@@ -14,6 +14,17 @@ app.use(
   })
 );
 
+//-------Verify Token-------
+const verifyToken = async (req, res, next) => {
+  const token = req.headers?.authorization;
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized acces" });
+  }
+  const tokenId = token.split(" ")[1];
+
+  next();
+};
+
 app.get("/", (req, res) => {
   res.send("E-Tution Server is Running...!");
 });
@@ -35,19 +46,18 @@ async function run() {
     //-------Post User-------
     app.post("/users", async (req, res) => {
       try {
-        
-        const existingUserQuery = {email: req.body.email}
-        const existingUser = await usersCollection.findOne(existingUserQuery)
-        if(existingUser){
-          return res.status(200).send({message: "Existing user logged in"})
+        const existingUserQuery = { email: req.body.email };
+        const existingUser = await usersCollection.findOne(existingUserQuery);
+        if (existingUser) {
+          return res.status(200).send({ message: "Existing user logged in" });
         }
-        
+
         const newUser = {
           name: req.body?.name,
           email: req.body?.email,
           role: req.body?.role,
           phone: req.body?.phone,
-        }
+        };
         newUser.createdAt = new Date();
 
         const result = await usersCollection.insertOne(newUser);
@@ -58,7 +68,7 @@ async function run() {
     });
 
     // -------Get All User-------
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyToken, async (req, res) => {
       try {
         const cursor = await usersCollection.find();
         const result = await cursor.toArray();
