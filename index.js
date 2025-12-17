@@ -7,7 +7,7 @@ require("dotenv").config();
 
 //-------Firebase Admin Installation-------
 const admin = require("firebase-admin");
-const serviceAccount = require("e-tutionbd-firebase-adminsdk-.json");
+const serviceAccount = require("./fbadmin-key.json");
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
@@ -24,12 +24,19 @@ app.use(
 //-------Verify Token-------
 const verifyToken = async (req, res, next) => {
   const token = req.headers?.authorization;
-  if (!token) {
-    return res.status(401).send({ message: "unauthorized acces" });
-  }
-  const tokenId = token.split(" ")[1];
 
-  next();
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized Access" });
+  }
+
+  try {
+    const tokenID = token.split(" ")[1];
+    const decoded = await admin.auth().verifyIdToken(tokenID);
+    req.tokenOwnerEmail = decoded.email;
+    next();
+  } catch (err) {
+    return res.status(401).send({ message: "Unauthorized Access" });
+  }
 };
 
 app.get("/", (req, res) => {
