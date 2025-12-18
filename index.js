@@ -56,6 +56,18 @@ async function run() {
   try {
     const db = client.db("TutionBD_DB");
     const usersCollection = db.collection("users");
+    const tutionsCollection = db.collection("tutions");
+
+    // -------Get A User Role By Email-------
+    app.get("/user/:email/role", async (req, res) => {
+      const email = req.params.email;
+      if (!email) {
+        return res.send({ message: "Email Ruquired" });
+      }
+      const query = { email };
+      const user = await usersCollection.findOne(query);
+      res.send({ role: user?.role || "student" });
+    });
 
     //-------Post User-------
     app.post("/users", async (req, res) => {
@@ -90,6 +102,14 @@ async function run() {
       } catch (err) {
         res.status(500).send({ error: "Inernal Server Error" });
       }
+    });
+
+    //-------Post Tution-------
+    app.post("/post-tution", async (req, res) => {
+      const newPost = req.body;
+      (newPost.status = "pending"), (newPost.createdAt = new Date());
+      const result = await tutionsCollection.insertOne(newPost);
+      res.send(result);
     });
 
     await client.db("admin").command({ ping: 1 });
