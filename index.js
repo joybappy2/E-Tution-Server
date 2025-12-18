@@ -112,6 +112,19 @@ async function run() {
       res.send(result);
     });
 
+    //-------My Tutions By Email-------
+    app.get("/my-tutions/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { email };
+        const cursor = await tutionsCollection.find(query);
+        const result = await cursor.toArray();
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
