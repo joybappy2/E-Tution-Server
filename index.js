@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 const port = process.env.PORT || 3000;
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 
 //-------Firebase Admin Installation-------
@@ -122,6 +122,21 @@ async function run() {
         res.send(result);
       } catch (err) {
         res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+    //------- Update a tution post -------
+    app.patch("/update/tution/:id", async (req, res) => {
+      try {
+        const id = req.params?.id;
+        const query = { _id: new ObjectId(id) };
+        const updatedPost = req.body;
+        const result = await tutionsCollection.updateOne(query, {
+          $set: updatedPost,
+        });
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ message: err.code });
       }
     });
 
