@@ -58,6 +58,13 @@ async function run() {
     const usersCollection = db.collection("users");
     const tutionsCollection = db.collection("tutions");
 
+    // ------ Get all users ------
+    app.get("/users", async (req, res) => {
+      const cursor = usersCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     // -------Get A User Role By Email-------
     app.get("/user/:email/role", async (req, res) => {
       const email = req.params.email;
@@ -134,6 +141,18 @@ async function run() {
         const result = await tutionsCollection.updateOne(query, {
           $set: updatedPost,
         });
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ message: err.code });
+      }
+    });
+
+    // ------ Delete Post api -------
+    app.delete("/delete/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await tutionsCollection.deleteOne(query);
         res.send(result);
       } catch (err) {
         res.status(500).send({ message: err.code });
