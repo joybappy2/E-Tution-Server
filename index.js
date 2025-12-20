@@ -84,6 +84,7 @@ async function run() {
           role: req.body?.role,
           phone: req.body?.phone,
           photoURL: req.body?.photoURL,
+          uid: req.body?.uid,
         };
         newUser.createdAt = new Date();
 
@@ -139,6 +140,27 @@ async function run() {
         res.send(result);
       } catch (err) {
         res.status(500).send({ message: err.code });
+      }
+    });
+
+    //------- Delete a user -------
+    app.delete("/delete/user/:uid", async (req, res) => {
+      try {
+        const uid = req.params.uid;
+        await admin.auth().deleteUser(uid);
+        console.log("user deleted from firebase");
+        const query = {uid}
+        const result = await usersCollection.deleteOne(query);
+        if (!result) {
+          return res
+            .status(404)
+            .json({
+              message: "User deleted from Firebase, but not found in MongoDB",
+            });
+        }
+        res.send(result);
+      } catch (err) {
+        return res.status(500).send({ message: err.code });
       }
     });
 
