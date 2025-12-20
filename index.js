@@ -124,6 +124,24 @@ async function run() {
       }
     });
 
+    //------- Change user role -------
+    app.patch("/user/:id/role", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const role = req.query.role;
+        const query = { _id: new ObjectId(id) };
+        const update = {
+          $set: {
+            role: role,
+          },
+        };
+        const result = await usersCollection.updateOne(query, update);
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ message: err.code });
+      }
+    });
+
     //-------Post Tution-------
     app.post("/post-tution", async (req, res) => {
       const newPost = req.body;
