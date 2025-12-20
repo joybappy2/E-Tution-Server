@@ -86,6 +86,9 @@ async function run() {
           photoURL: req.body?.photoURL,
           uid: req.body?.uid,
         };
+        if (req.body.role === "tutor") {
+          newUser.verificationStatus = "not-verified";
+        }
         newUser.createdAt = new Date();
 
         const result = await usersCollection.insertOne(newUser);
@@ -118,6 +121,11 @@ async function run() {
             photoURL: req.body?.photoURL,
           },
         };
+
+        if (req.body?.verificationStatus) {
+          update.$set.verificationStatus = 'verified';
+        }
+
         const result = await usersCollection.updateOne(query, update);
         res.send(result);
       } catch (err) {
@@ -149,14 +157,12 @@ async function run() {
         const uid = req.params.uid;
         await admin.auth().deleteUser(uid);
         console.log("user deleted from firebase");
-        const query = {uid}
+        const query = { uid };
         const result = await usersCollection.deleteOne(query);
         if (!result) {
-          return res
-            .status(404)
-            .json({
-              message: "User deleted from Firebase, but not found in MongoDB",
-            });
+          return res.status(404).json({
+            message: "User deleted from Firebase, but not found in MongoDB",
+          });
         }
         res.send(result);
       } catch (err) {
