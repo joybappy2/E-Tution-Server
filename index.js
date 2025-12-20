@@ -58,13 +58,6 @@ async function run() {
     const usersCollection = db.collection("users");
     const tutionsCollection = db.collection("tutions");
 
-    // ------ Get all users ------
-    app.get("/users", async (req, res) => {
-      const cursor = usersCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-    });
-
     // -------Get A User Role By Email-------
     app.get("/user/:email/role", async (req, res) => {
       const email = req.params.email;
@@ -90,6 +83,7 @@ async function run() {
           email: req.body?.email,
           role: req.body?.role,
           phone: req.body?.phone,
+          photoURL: req.body?.photoURL,
         };
         newUser.createdAt = new Date();
 
@@ -108,6 +102,25 @@ async function run() {
         res.send(result);
       } catch (err) {
         res.status(500).send({ error: "Inernal Server Error" });
+      }
+    });
+
+    // ----- Update Userinfo --------- ------- start here tomorrow (frontend my tution page and user management page)
+    app.patch("/users/:id/update-info", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const update = {
+          $set: {
+            name: req.body?.name,
+            phone: req.body?.phone,
+            photoURL: req.body?.photoURL,
+          },
+        };
+        const result = await usersCollection.updateOne(query, update);
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ message: err.code });
       }
     });
 
