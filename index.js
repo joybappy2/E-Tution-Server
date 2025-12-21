@@ -357,6 +357,18 @@ async function run() {
       }
     });
 
+    // ------ Delete application api -------
+    app.delete("/delete/application/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await tutionApplicationsCollection.deleteOne(query);
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
