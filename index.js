@@ -123,7 +123,7 @@ async function run() {
         };
 
         if (req.body?.verificationStatus) {
-          update.$set.verificationStatus = 'verified';
+          update.$set.verificationStatus = "verified";
         }
 
         const result = await usersCollection.updateOne(query, update);
@@ -176,6 +176,33 @@ async function run() {
       (newPost.status = "pending"), (newPost.createdAt = new Date());
       const result = await tutionsCollection.insertOne(newPost);
       res.send(result);
+    });
+
+    //------- Get all tution post -------
+    app.get("/all-tutions", async (req, res) => {
+      try {
+        const result = await tutionsCollection.find().toArray();
+        res.send(result);
+      } catch (err) {
+        return res.status(500).send({ message: err.code });
+      }
+    });
+
+    app.patch("/tution/update/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const newStatus = req.query.status;
+        const update = {
+          $set: {
+            status: newStatus,
+          },
+        };
+        const result = await tutionsCollection.updateOne(query, update);
+        res.send(result);
+      } catch (err) {
+        return res.status(500).send({ message: err.code });
+      }
     });
 
     //-------My Tutions By Email-------
