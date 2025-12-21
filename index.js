@@ -57,6 +57,7 @@ async function run() {
     const db = client.db("TutionBD_DB");
     const usersCollection = db.collection("users");
     const tutionsCollection = db.collection("tutions");
+    const tutionApplicationsCollection = db.collection("tution-applications");
 
     // -------Get A User Role By Email-------
     app.get("/user/:email/role", async (req, res) => {
@@ -101,7 +102,7 @@ async function run() {
     // -------Get All User-------
     app.get("/users", verifyToken, async (req, res) => {
       try {
-        const cursor = await usersCollection.find();
+        const cursor = await usersCollection.find().sort({ createdAt: -1 });
         const result = await cursor.toArray();
         res.send(result);
       } catch (err) {
@@ -181,11 +182,27 @@ async function run() {
     //------- Get all tution post -------
     app.get("/all-tutions", async (req, res) => {
       try {
-        const result = await tutionsCollection.find().toArray();
+        const status = req.query.status;
+        const query = {};
+        if (status) {
+          query.status = status;
+        }
+        const result = await tutionsCollection
+          .find(query)
+          .sort({ createdAt: -1 })
+          .toArray();
         res.send(result);
       } catch (err) {
         return res.status(500).send({ message: err.code });
       }
+    });
+
+    //------- Get all tution post -------
+    app.get(`/tution/:id`, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await tutionsCollection.findOne(query);
+      res.send(result);
     });
 
     app.patch("/tution/update/:id", async (req, res) => {
@@ -233,6 +250,26 @@ async function run() {
       }
     });
 
+    //------- Update a tution post (Add tutor email to array) -------
+    app.patch("/update/tution/:id/appliedEmails", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const { tutorEmail } = req.body;
+
+        const updateDoc = {
+          $addToSet: {
+            appliedEmails: tutorEmail,
+          },
+        };
+
+        const result = await tutionsCollection.updateOne(query, updateDoc);
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ message: err.message });
+      }
+    });
+
     // ------ Delete Post api -------
     app.delete("/delete/:id", async (req, res) => {
       try {
@@ -242,6 +279,81 @@ async function run() {
         res.send(result);
       } catch (err) {
         res.status(500).send({ message: err.code });
+      }
+    });
+
+    // ------- Post Tution Applications ----------
+    app.post("/tution/applications", async (req, res) => {
+      try {
+        const newApplication = req.body;
+        newApplication.applicationStatus = "pending";
+        newApplication.appliedAt = new Date();
+
+        const query = {
+          tutorEmail: newApplication.tutorEmail,
+          tutionPostId: newApplication.tutionPostId,
+        };
+
+        const alreadyApplied = await tutionApplicationsCollection.findOne(
+          query
+        );
+        if (alreadyApplied) {
+          return res
+            .status(400)
+            .send({ message: "You have already applied to this tution" });
+        }
+
+        const result = await tutionApplicationsCollection.insertOne(
+          newApplication
+        );
+        res.send(result);
+      } catch (err) {
+        return res.status(500).send({ message: err.code });
+      }
+    });
+
+    // ------- Get all application by tutorEmail email ----------
+    app.get("/tution/applications/:email", async (req, res) => {
+      console.log("hitting");
+      try {
+        const email = req.params.email;
+        const cursor = tutionApplicationsCollection.find({
+          tutorEmail: email,
+        });
+        const result = await cursor.toArray();
+        res.send(result);
+      } catch (err) {
+        return res.status(500).send({ message: err.code });
+      }
+    });
+
+    // ------- Update application info by id ----------
+    app.patch("/update/application/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { experience, expectedSalary, qualification } = req.body;
+        const updateFields = {};
+        if (experience) {
+          updateFields.experience = experience;
+        }
+        if (expectedSalary) {
+          updateFields.expectedSalary = expectedSalary;
+        }
+        if (qualification) {
+          updateFields.qualification = qualification;
+        }
+        console.log(updateFields);
+        const updateDoc = {
+          $set: updateFields,
+        };
+        const query = { _id: new ObjectId(id) };
+        const result = await tutionApplicationsCollection.updateOne(
+          query,
+          updateDoc
+        );
+        res.send(result);
+      } catch (err) {
+        return res.status(500).send({ message: "Internal Server Error" });
       }
     });
 
