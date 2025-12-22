@@ -1,9 +1,10 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const app = express();
 const port = process.env.PORT || 3000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_KEY);
 
 //-------Firebase Admin Installation-------
 const admin = require("firebase-admin");
@@ -381,6 +382,36 @@ async function run() {
       const cursor = tutionApplicationsCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
+    });
+
+    // ----- Payment Checkout -------
+    app.post("/payment-checkout-session", async (req, res) => {
+      console.log("hitting");
+      const paymentInfo = req.body;
+      const amount = parseFloat(paymentInfo?.expectedSalary) * 100;
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data: {
+              unit_amount: amount,
+              currency: "BDT",
+              product_data: {
+                name: `Pay for "${paymentInfo.subjectName}"`,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        metadata: {
+          tutionId: paymentInfo.tutionPostId,
+          subjectName: paymentInfo.subjectName,
+        },
+        customer_email: paymentInfo.tuitonOwnerEmail,
+        success_url: `${process.env.SITE_DOMAIN}/dashboard/student/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.SITE_DOMAIN}/dashboard/student/payment-cancelled`,
+      });
+      res.send({ url: session.url });
     });
 
     await client.db("admin").command({ ping: 1 });
