@@ -434,11 +434,7 @@ async function run() {
             applicationStatus: "approved",
           },
         };
-        const result = await tutionApplicationsCollection.updateOne(
-          query,
-          update
-        );
-        res.send(result);
+        await tutionApplicationsCollection.updateOne(query, update);
         const transactionId = session.payment_intent;
         const paymentHistory = {
           paidAmount: session.amount_total / 100,
@@ -466,15 +462,21 @@ async function run() {
             });
           }
 
-          const paymentResult = await paymentsCollection.insertOne(
-            paymentHistory
+          await paymentsCollection.insertOne(paymentHistory);
+
+          const tutionPostId = session.metadata.tutionPostId;
+          const tutionQuery = { _id: new ObjectId(tutionPostId) };
+          const tutionUpdateDoc = {
+            $set: {
+              status: "assigned",
+            },
+          };
+
+          const result = await tutionsCollection.updateOne(
+            tutionQuery,
+            tutionUpdateDoc
           );
-          res.send({
-            success: true,
-            modifiedParcel: result,
-            savingPayment: paymentResult,
-            transactionId: session.payment_intent,
-          });
+          res.send(result);
         }
       }
     });
@@ -496,7 +498,7 @@ async function run() {
     });
 
     //  ------ get payment tutors earnings -------
-    app.get("/earnings/tutor/:email", async (req, res) => {
+    app.get("/earnings/:email", async (req, res) => {
       const tutorEmail = req.params.email;
       const query = { tutorEmail: tutorEmail };
       const cursor = await paymentsCollection.find(query);
