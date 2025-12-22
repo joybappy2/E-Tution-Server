@@ -111,10 +111,16 @@ async function run() {
     });
 
     // ----- Update Userinfo --------- ------- start here tomorrow (frontend my tution page and user management page)
-    app.patch("/users/:id/update-info", async (req, res) => {
+    app.patch("/users/:uid/update-info", async (req, res) => {
       try {
-        const id = req.params.id;
-        const query = { _id: new ObjectId(id) };
+        const uid = req.params.uid;
+        const query = { uid };
+
+        await admin.auth().updateUser(uid, {
+          displayName: req?.body?.name,
+          photoURL: req.body.photoURL,
+        });
+
         const update = {
           $set: {
             name: req.body?.name,
@@ -367,6 +373,14 @@ async function run() {
       } catch (err) {
         res.status(500).send({ message: "Internal Server Error" });
       }
+    });
+
+    // ------ Get applied tutors -------
+    app.get("/applications/appliedTutors/:email", async (req, res) => {
+      const query = { tuitonOwnerEmail: req.params?.email };
+      const cursor = tutionApplicationsCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
     });
 
     await client.db("admin").command({ ping: 1 });
