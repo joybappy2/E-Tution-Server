@@ -386,7 +386,7 @@ async function run() {
 
     // ----- Payment Checkout -------
     app.post("/payment-checkout-session", async (req, res) => {
-      console.log("hitting");
+      // console.log("hitting");
       const paymentInfo = req.body;
       const amount = parseFloat(paymentInfo?.expectedSalary) * 100;
       const session = await stripe.checkout.sessions.create({
@@ -404,14 +404,76 @@ async function run() {
         ],
         mode: "payment",
         metadata: {
-          tutionId: paymentInfo.tutionPostId,
-          subjectName: paymentInfo.subjectName,
+          applicationId: paymentInfo?.applicationId,
+          tutionPostId: paymentInfo?.tutionPostId,
+          subjectName: paymentInfo?.subjectName,
         },
         customer_email: paymentInfo.tuitonOwnerEmail,
         success_url: `${process.env.SITE_DOMAIN}/dashboard/student/payment-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.SITE_DOMAIN}/dashboard/student/payment-cancelled`,
       });
       res.send({ url: session.url });
+    });
+
+    // verify payment
+    app.patch("/verify-payment", async (req, res) => {
+      const session_id = req.query?.session_id;
+      const session = await stripe.checkout.sessions.retrieve(session_id);
+      const payment_status = session?.payment_status;
+      // console.log(session);
+      // const trackingId = generateTrackingId();
+      // console.log("applicationId = ", session.metadata.applicationId);
+      if (payment_status === "paid") {
+        const applicationId = session.metadata.applicationId;
+        // console.log("application after if =", applicationId);
+        const query = { _id: new ObjectId(applicationId) };
+        // console.log(query);
+        const update = {
+          $set: {
+            applicationStatus: 'approved'
+          },
+        };
+        const result = await tutionApplicationsCollection.updateOne(query, update);
+        res.send(result)
+        //   const transactionId = session.payment_intent;
+        //   const paymentHistory = {
+        //     parcelName: session.metadata.parcelName,
+        //     parcelId: session.metadata.parcelId,
+        //     transactionId: session.payment_intent,
+        //     paymentStatus: session.payment_status,
+        //     customerEmail: session.customer_email,
+        //     customerName: session.name,
+        //     amount: session.amount_total,
+        //     paidAt: new Date(),
+        //   };
+
+        //   if (session.payment_status === "paid") {
+        //     const query = { transactionId: transactionId };
+        //     const existingPaymentHistory = await paymentsCollection.findOne(
+        //       query
+        //     );
+        //     if (existingPaymentHistory) {
+        //       return res.send({
+        //         message: "Payment already found in history",
+        //         transactionId: session.payment_intent,
+        //         trackingId: trackingId,
+        //       });
+        //     }
+
+        //     const paymentResult = await paymentsCollection.insertOne(
+        //       paymentHistory
+        //     );
+        //     res.send({
+        //       success: true,
+        //       modifiedParcel: result,
+        //       savingPayment: paymentResult,
+        //       transactionId: session.payment_intent,
+        //       trackingId: trackingId,
+        //     });
+        //   }
+      }
+
+      // res.send({ success: true });
     });
 
     await client.db("admin").command({ ping: 1 });
