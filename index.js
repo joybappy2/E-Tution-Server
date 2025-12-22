@@ -59,6 +59,7 @@ async function run() {
     const usersCollection = db.collection("users");
     const tutionsCollection = db.collection("tutions");
     const tutionApplicationsCollection = db.collection("tution-applications");
+    const paymentsCollection = db.collection("payments");
 
     // -------Get A User Role By Email-------
     app.get("/user/:email/role", async (req, res) => {
@@ -409,6 +410,7 @@ async function run() {
           applicationId: paymentInfo?.applicationId,
           tutionPostId: paymentInfo?.tutionPostId,
           subjectName: paymentInfo?.subjectName,
+          tutorEmail: paymentInfo?.tutorEmail,
         },
         customer_email: paymentInfo.tuitonOwnerEmail,
         success_url: `${process.env.SITE_DOMAIN}/dashboard/student/payment-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -421,15 +423,12 @@ async function run() {
     app.patch("/verify-payment", async (req, res) => {
       const session_id = req.query?.session_id;
       const session = await stripe.checkout.sessions.retrieve(session_id);
+      console.log(session);
+
       const payment_status = session?.payment_status;
-      // console.log(session);
-      // const trackingId = generateTrackingId();
-      // console.log("applicationId = ", session.metadata.applicationId);
       if (payment_status === "paid") {
         const applicationId = session.metadata.applicationId;
-        // console.log("application after if =", applicationId);
         const query = { _id: new ObjectId(applicationId) };
-        // console.log(query);
         const update = {
           $set: {
             applicationStatus: "approved",
@@ -440,45 +439,44 @@ async function run() {
           update
         );
         res.send(result);
-        //   const transactionId = session.payment_intent;
-        //   const paymentHistory = {
-        //     parcelName: session.metadata.parcelName,
-        //     parcelId: session.metadata.parcelId,
-        //     transactionId: session.payment_intent,
-        //     paymentStatus: session.payment_status,
-        //     customerEmail: session.customer_email,
-        //     customerName: session.name,
-        //     amount: session.amount_total,
-        //     paidAt: new Date(),
-        //   };
+        const transactionId = session.payment_intent;
+        const paymentHistory = {
+          paidAmount: session.amount_total / 100,
+          payerEmail: session.customer_email,
+          payedSubject: session.metadata.subjectName,
+          payedTutionId: session.metadata.tutionPostId,
+          paidApplicationId: session.metadata.applicationId,
+          transactionId: session.payment_intent,
+          tutorEmail: session.metadata.tutorEmail,
+          paidAt: new Date(),
+          paymentStatus: session.payment_status,
+        };
 
-        //   if (session.payment_status === "paid") {
-        //     const query = { transactionId: transactionId };
-        //     const existingPaymentHistory = await paymentsCollection.findOne(
-        //       query
-        //     );
-        //     if (existingPaymentHistory) {
-        //       return res.send({
-        //         message: "Payment already found in history",
-        //         transactionId: session.payment_intent,
-        //         trackingId: trackingId,
-        //       });
-        //     }
+        console.log(paymentHistory);
 
-        //     const paymentResult = await paymentsCollection.insertOne(
-        //       paymentHistory
-        //     );
-        //     res.send({
-        //       success: true,
-        //       modifiedParcel: result,
-        //       savingPayment: paymentResult,
-        //       transactionId: session.payment_intent,
-        //       trackingId: trackingId,
-        //     });
-        //   }
+        if (session.payment_status === "paid") {
+          const query = { transactionId: transactionId };
+          const existingPaymentHistory = await paymentsCollection.findOne(
+            query
+          );
+          if (existingPaymentHistory) {
+            return res.send({
+              message: "Payment already found in history",
+              transactionId: session.payment_intent,
+            });
+          }
+
+          const paymentResult = await paymentsCollection.insertOne(
+            paymentHistory
+          );
+          res.send({
+            success: true,
+            modifiedParcel: result,
+            savingPayment: paymentResult,
+            transactionId: session.payment_intent,
+          });
+        }
       }
-
-      // res.send({ success: true });
     });
 
     // -------- Reject Tutor Application --------
@@ -494,6 +492,15 @@ async function run() {
         query,
         updateDoc
       );
+      res.send(result);
+    });
+
+    //  ------ get payment tutors earnings -------
+    app.get("/earnings/tutor/:email", async (req, res) => {
+      const tutorEmail = req.params.email;
+      const query = { tutorEmail: tutorEmail };
+      const cursor = await paymentsCollection.find(query);
+      const result = await cursor.toArray();
       res.send(result);
     });
 
