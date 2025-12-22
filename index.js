@@ -8,7 +8,11 @@ const stripe = require("stripe")(process.env.STRIPE_KEY);
 
 //-------Firebase Admin Installation-------
 const admin = require("firebase-admin");
-const serviceAccount = require("./fbadmin-key.json");
+const decoded = Buffer.from(process.env.FB_ADMIN_KEY, "base64").toString(
+  "utf8"
+);
+const serviceAccount = JSON.parse(decoded);
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
@@ -165,7 +169,6 @@ async function run() {
       try {
         const uid = req.params.uid;
         await admin.auth().deleteUser(uid);
-        console.log("user deleted from firebase");
         const query = { uid };
         const result = await usersCollection.deleteOne(query);
         if (!result) {
@@ -322,7 +325,6 @@ async function run() {
 
     // ------- Get all application by tutorEmail email ----------
     app.get("/tution/applications/:email", async (req, res) => {
-      console.log("hitting");
       try {
         const email = req.params.email;
         const cursor = tutionApplicationsCollection.find({
@@ -350,7 +352,7 @@ async function run() {
         if (qualification) {
           updateFields.qualification = qualification;
         }
-        console.log(updateFields);
+
         const updateDoc = {
           $set: updateFields,
         };
@@ -389,7 +391,6 @@ async function run() {
 
     // ----- Payment Checkout -------
     app.post("/payment-checkout-session", async (req, res) => {
-      // console.log("hitting");
       const paymentInfo = req.body;
       const amount = parseFloat(paymentInfo?.expectedSalary) * 100;
       const session = await stripe.checkout.sessions.create({
@@ -423,7 +424,6 @@ async function run() {
     app.patch("/verify-payment", async (req, res) => {
       const session_id = req.query?.session_id;
       const session = await stripe.checkout.sessions.retrieve(session_id);
-      console.log(session);
 
       const payment_status = session?.payment_status;
       if (payment_status === "paid") {
@@ -447,8 +447,6 @@ async function run() {
           paidAt: new Date(),
           paymentStatus: session.payment_status,
         };
-
-        console.log(paymentHistory);
 
         if (session.payment_status === "paid") {
           const query = { transactionId: transactionId };
@@ -501,15 +499,10 @@ async function run() {
     app.get("/earnings/:email", async (req, res) => {
       const tutorEmail = req.params.email;
       const query = { tutorEmail: tutorEmail };
-      const cursor = await paymentsCollection.find(query);
+      const cursor = await paymentsCollection.find(query).sort({ paidAt: -1 });
       const result = await cursor.toArray();
       res.send(result);
     });
-
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
   } finally {
   }
 }
@@ -519,3 +512,5 @@ run().catch(console.dir);
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
+
+module.exports = app;
