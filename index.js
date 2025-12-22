@@ -379,7 +379,9 @@ async function run() {
     // ------ Get applied tutors -------
     app.get("/applications/appliedTutors/:email", async (req, res) => {
       const query = { tuitonOwnerEmail: req.params?.email };
-      const cursor = tutionApplicationsCollection.find(query);
+      const cursor = tutionApplicationsCollection
+        .find(query)
+        .sort({ appliedAt: -1 });
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -430,11 +432,14 @@ async function run() {
         // console.log(query);
         const update = {
           $set: {
-            applicationStatus: 'approved'
+            applicationStatus: "approved",
           },
         };
-        const result = await tutionApplicationsCollection.updateOne(query, update);
-        res.send(result)
+        const result = await tutionApplicationsCollection.updateOne(
+          query,
+          update
+        );
+        res.send(result);
         //   const transactionId = session.payment_intent;
         //   const paymentHistory = {
         //     parcelName: session.metadata.parcelName,
@@ -474,6 +479,22 @@ async function run() {
       }
 
       // res.send({ success: true });
+    });
+
+    // -------- Reject Tutor Application --------
+    app.patch("/reject/application/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          applicationStatus: "rejected",
+        },
+      };
+      const result = await tutionApplicationsCollection.updateOne(
+        query,
+        updateDoc
+      );
+      res.send(result);
     });
 
     await client.db("admin").command({ ping: 1 });
